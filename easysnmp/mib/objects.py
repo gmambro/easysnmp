@@ -3,14 +3,20 @@ __all__ = [ "ScalarObject", "TabularObject" ]
 class MIBObject(object):
     def __init__(self, name, oid_leaf):
         self.name = name
+        self.__module = None
+
 
         if isinstance(oid_leaf, int):
             oid_leaf = str(oid_leaf)
-        self.__oid_leaf  = oid_leaf
 
-        # will be set when added to module
-        self.__oid  = None
-        self.__module = None
+        if oid_leaf[0] == '/':
+            self.__oid      = oid_leaf[1:]
+            self.__oid_leaf = None
+        else:
+            self.__oid_leaf = oid_leaf
+            # will be set when added to module
+            self.__oid    = None
+
 
     def set_module(self, module):
         if self.__module is not None:

@@ -67,5 +67,8 @@ class MIBModule(object):
 
     @classmethod
     def get_name(cls):
-        return cls.__name__
+        return cls.__mib_name__
 
+    @classmethod
+    def get_objects(cls):
+        return cls.__objects__
