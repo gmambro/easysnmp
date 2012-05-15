@@ -35,19 +35,16 @@ class MIBObject(object):
         self.__oid = oid
         return oid
         
-    def retrieve(self, agent):
-        raise NotImplementedError()
-
 class ScalarObject(MIBObject):
 
     def __init__(self, name, oid_leaf, munger=None):
         super(ScalarObject, self).__init__(name, oid_leaf)
         self.munger = munger
 
-
 class TabularObject(MIBObject):
 
-    def __init__(self, name, oid_leaf, columns=None, entry_id=1):
+    def __init__(self, name, oid_leaf, columns=None, 
+                entry_id=1, index_munger=None):
         super(TabularObject, self).__init__(name, oid_leaf)
         
         if isinstance(entry_id, int):
@@ -55,14 +52,15 @@ class TabularObject(MIBObject):
         self.__entry_id = str(entry_id)
         self.__column_by_name = {}
         self.__column_by_oid  = {}
-        self.index_munger = None
+        # index_munger takes a list of oids
+        self.index_munger = index_munger
         self.columns = []
 
         if isinstance(columns, list):
             for col in columns:
                 self.add_column(col)
         elif isinstance(columns, dict):
-            for col_name, col_info in columns.items():
+            for col_name, col_info in columns.iteritems():
                 if isinstance(col_info, list):
                     col = TableColumn(col_name, *col_info)
                 elif isinstance(col_info, dict):
