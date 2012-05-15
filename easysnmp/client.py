@@ -23,19 +23,20 @@ def get_table(addr, comm, mib_table, columns=[]):
     for r in t:
         id, val = r[0][0], r[0][1]
         col_oid = str( id[: oid_l + 2])
-        row_idx = str( id[oid_l + 2 : ])
         col_obj = mib_table.get_col_by_oid(col_oid)
         if col_obj is None:
             continue
 
+        row_idx = id[oid_l + 2 : ]
+        munged_row_idx = idx_munger(row_idx)
+ 
         if col_obj.munger:
             val = col_obj.munger(val)
         else:
             val = str(val)
 
-        row_idx = idx_munger(row_idx)
-
-        result_row = result_table.setdefault(row_idx, { 'index' : row_idx })
+        result_row = result_table.setdefault(str(row_idx), 
+                                            { 'index' : munged_row_idx })
         result_row[col_obj.name] = val
 
     return result_table
@@ -59,7 +60,7 @@ def snmpwalk( addr, comm, oid  ):
     """This function will return the table of OID's that I am walking"""
     errorIndication, errorStatus, errorIndex, generic = \
         cmdgen.CommandGenerator().nextCmd(cmdgen.CommunityData('test-agent', comm), \
-    cmdgen.UdpTransportTarget((addr, 161)), oid)
+                                        cmdgen.UdpTransportTarget((addr, 161)), oid)
 
     if errorIndication:
         raise SNMPError(indication=errorIndication)
@@ -71,11 +72,9 @@ def snmpwalk( addr, comm, oid  ):
 
 def snmpget(addr, comm, oid  ):
 
-    errorIndication, errorStatus, errorIndex, \
-        generic = cmdgen.CommandGenerator().getCmd(cmdgen.CommunityData('test-agent', comm), \
-       cmdgen.UdpTransportTarget((addr, 161)), oid )
-
-    print oid
+    errorIndication, errorStatus, errorIndex, generic = \
+        cmdgen.CommandGenerator().getCmd(cmdgen.CommunityData('test-agent', comm), \
+                                        cmdgen.UdpTransportTarget((addr, 161)), oid )
 
     if errorIndication:
         raise SNMPError(indication=errorIndication)
