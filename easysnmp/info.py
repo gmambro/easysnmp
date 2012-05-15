@@ -1,9 +1,15 @@
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 
 from .munge import *
-from .client import snmpget, snmpwalk
+from .client import snmpget, snmpwalk, get_table, get_scalar
 from .exceptions import SNMPError
 
+from easysnmp.mib.SNMPv2 import SNMPv2, IFMIB, Bridge
+from easysnmp.mib.CiscoCDP import CiscoCDP
+from easysnmp.mib.CiscoVTP import CiscoVTP
+from easysnmp.client import get_scalar, get_table
+
+import logging
 
 OIDS = {
     "sysName" : (1,3,6,1,2,1,1,5),
@@ -27,6 +33,7 @@ OIDS = {
    "cdpCacheSysName"    :       (1,3,6,1,4,1,9,9,23,1,2,1,1,17),
  }
 
+logger = logging.getLogger(__name__)
 
 # decorator for SNMPInfo 
 def cached_info(fn):
@@ -66,9 +73,6 @@ class SNMPInfo(object):
         return ifname_map
 
     def get_fw_table(self, vlan=None) :
-        if hasattr(self, '_fw_table'):
-            return self._fw_table
-
         community = self.community
         if vlan is not None:
             community = community + '@' + str(vlan)
@@ -79,15 +83,44 @@ class SNMPInfo(object):
         brport_map = {}
         for e in brport_table:
              brport_map[ str(e[0][0][-1]) ] = str(e[0][1])
-    
+
         fw_table = {}
         ifname = self.get_ifname()
         for e in fwport_table:
-             macaddr = munge_macaddress(list(e[0][0][-6:]))
-             fw_table[macaddr] = ifname [ brport_map [ str( e[0][1] ) ] ]
+            macaddr = munge_macaddress_ids(list(e[0][0][-6:]))
+            brport =  brport_map [ str( e[0][1] ) ]
+            if brport not in ifname:
+                logger.debug("bridge port id %s not in interface table", brport)
+                continue
+            fw_table[macaddr] = ifname [ brport ]
 
-        self._fw_table = fw_table
         return fw_table
+
+    @cached_info
+    def get_connected_hosts(self):
+        host_table = {}
+
+        uplinks = set()
+        for e in self.get_cdp_cache():
+            uplinks.add(e['local_port'])
+           
+        logger.debug('uplinks = %s', str(uplinks))
+
+        for vlan in self.get_vtp_table().itervalues():
+            vlan_id = vlan['index']['id']
+
+            if vlan_id != 1:
+                fw_table = self.get_fw_table(vlan_id)
+            else:
+                fw_table = self.get_fw_table()
+
+            for macaddr, port in fw_table.iteritems():
+                if port in uplinks: continue
+
+                host_table[(macaddr, vlan_id)] = port
+    
+        return host_table
+
 
     @cached_info
     def get_cdp_cache(self):
@@ -111,5 +144,12 @@ class SNMPInfo(object):
                         'address': munge_ipaddress(addr[0][1]),
                         'remote_port': str(port[0][1]) })
         return cdp_cache
+
+    @cached_info
+    def get_vtp_table(self):
+        community = self.community
+        device = self.device
+        
+        return get_table( device, community, CiscoVTP.vtpVlanTable )
 
 
