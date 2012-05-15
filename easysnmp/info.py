@@ -88,11 +88,17 @@ class SNMPInfo(object):
         ifname = self.get_ifname()
         for e in fwport_table:
             macaddr = munge_macaddress_ids(list(e[0][0][-6:]))
-            brport =  brport_map [ str( e[0][1] ) ]
-            if brport not in ifname:
-                logger.debug("bridge port id %s not in interface table", brport)
+            br_port = str( e[0][1] )
+            
+            if br_port not in brport_map:
+                logger.debug("bridge port id %s not in port table", br_port)
                 continue
-            fw_table[macaddr] = ifname [ brport ]
+            if_idx = brport_map [ br_port ]
+
+            if if_idx not in ifname:
+                logger.debug("bridge port id %s not in interface table", if_idx)
+                continue
+            fw_table[macaddr] = ifname [ if_idx ]
 
         return fw_table
 
