@@ -1,5 +1,9 @@
 from .objects import *
 from .module import *
+            
+def vtp_vlan_index_munger(index):
+    (domain, name) = index
+    return { 'domain' : domain, 'id': name }
 
 class CiscoVTP(MIBModule):
 
@@ -8,6 +12,7 @@ class CiscoVTP(MIBModule):
 
     __objects__ = [
         TabularObject('vtpVlanTable', '1.3.1',
+            index_munger = vtp_vlan_index_munger,
             columns = {
                 "vtpVlanIndex": 1,
                 "vtpVlanState": 2,
